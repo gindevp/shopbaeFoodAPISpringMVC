@@ -15,19 +15,33 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import shopbae.food.jwt.JwtUtility;
 import shopbae.food.model.Account;
 import shopbae.food.model.AccountDetails;
+import shopbae.food.model.AppUser;
+import shopbae.food.model.Mail;
+import shopbae.food.model.Merchant;
+import shopbae.food.model.dto.AccountRegisterDTO;
 import shopbae.food.model.dto.AccountToken;
 import shopbae.food.model.dto.ApiResponse;
 import shopbae.food.model.dto.LoginRequest;
 import shopbae.food.service.account.IAccountService;
+import shopbae.food.service.mail.MailService;
+import shopbae.food.service.merchant.IMerchantService;
+import shopbae.food.service.role.IRoleService;
+import shopbae.food.service.user.IAppUserService;
+import shopbae.food.util.AccountStatus;
+import shopbae.food.util.Email;
 
 @RestController
 @CrossOrigin
 public class AuthenController {
+
+    @Autowired
+    private MailService mailService;
 
     @Autowired
     private JwtUtility jwtUtility;
@@ -40,6 +54,15 @@ public class AuthenController {
 
     @Autowired
     private IAccountService accountService;
+
+    @Autowired
+    private IAppUserService userService;
+
+    @Autowired
+    private IMerchantService merchantService;
+
+    @Autowired
+    private IRoleService roleService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
@@ -57,20 +80,26 @@ public class AuthenController {
             Account account = accountService.findByName(loginRequest.getUserName());
             if (account.getMerchant() != null) {
                 String status = account.getMerchant().getStatus();
-                if ("pending".equals(status)) {
+                if ("PENDING".equals(status)) {
                     return ResponseEntity.ok(new ApiResponse("Admin chưa phê duyệt đăng ký merchant"));
                 }
-                if ("block".equals(status)) {
+                if ("BLOCK".equals(status)) {
                     return ResponseEntity.ok(new ApiResponse("Tài khoản của bạn đang bị khóa"));
                 }
-                if ("refuse".equals(status)) {
+                if ("REFUSE".equals(status)) {
                     return ResponseEntity.ok(new ApiResponse("Admin đã từ chối đăng ký merchant"));
                 }
             }
             if (account.getUser() != null) {
                 String status = account.getUser().getStatus();
-                if ("block".equals(status)) {
+                if ("BLOCK".equals(status)) {
                     return ResponseEntity.ok(new ApiResponse("Tài khoản của bạn đang bị khóa"));
+                }
+                if ("REFUSE".equals(status)) {
+                    return ResponseEntity.ok(new ApiResponse("Admin đã từ chối đăng ký user"));
+                }
+                if ("PENDING".equals(status)) {
+                    return ResponseEntity.ok(new ApiResponse("Admin chưa phê duyệt đăng ký user"));
                 }
             }
 
@@ -82,13 +111,83 @@ public class AuthenController {
         }
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<?> addUser(@RequestBody LoginRequest loginRequest) {
-        boolean isEnabled = true;
-        String pass = encoder.encode(loginRequest.getPassword());
-        Account account = new Account(loginRequest.getUserName(), pass, isEnabled, null);
-        accountService.save(account);
-        return new ResponseEntity<>("okok", HttpStatus.OK);
+    @PostMapping("/forgotpass")
+    public ResponseEntity<?> fogot(@RequestParam String username) {
+        Account account = accountService.findByName(username);
+
+        if (account != null) {
+            double randomDouble = Math.random();
+            randomDouble = randomDouble * 1000000 + 1;
+            int OTP = (int) randomDouble;
+            account.setOtp(String.valueOf(OTP));
+            accountService.update(account);
+            Mail mail = new Mail();
+            mail.setMailTo(account.getEmail());
+            mail.setMailFrom(Email.MAIL);
+            mail.setMailSubject(Email.CONFIRM);
+            mail.setMailContent(Email.messageOTP(String.valueOf(OTP)));
+            mailService.sendEmail(mail);
+            return new ResponseEntity<>(new ApiResponse(mail), HttpStatus.OK);
+
+        } else {
+            return new ResponseEntity<>(new ApiResponse(Email.USER_EMPTY), HttpStatus.OK);
+        }
+
     }
 
+    @PostMapping("/forgotpass/confirm")
+    public ResponseEntity<?> confirmOtp(@RequestParam String otp, String pass, String username) {
+        Account account = accountService.findByName(username);
+        if (otp.equals(account.getOtp())) {
+            account.setPassword(encoder.encode(pass));
+            account.setOtp(null);
+            accountService.update(account);
+            return new ResponseEntity<>(new ApiResponse(account), HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(new ApiResponse(Email.USER_ERORR), HttpStatus.OK);
+        }
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<?> addUser(@RequestBody AccountRegisterDTO accountRegisterDTO, @RequestParam String role) {
+        try {
+
+            Account account3 = accountService.findByName(accountRegisterDTO.getUserName());
+            if (account3 == null) {
+                boolean isEnabled = true;
+                String pass = encoder.encode(accountRegisterDTO.getPassword());
+                Account account = new Account(accountRegisterDTO.getUserName(), pass, isEnabled,
+                        accountRegisterDTO.getEmail());
+                account.setAccountNonLocked(isEnabled);
+                accountService.save(account);
+            } else {
+                return new ResponseEntity<>(new ApiResponse("faile"), HttpStatus.OK);
+            }
+            Account account2 = accountService.findByName(accountRegisterDTO.getUserName());
+            if (role.equals("user")) {
+                roleService.setDefaultRole(account2.getId(), 2L);
+                String avatar = "tet.jpg";
+                userService.save(new AppUser(accountRegisterDTO.getName(), accountRegisterDTO.getAddress(),
+                        accountRegisterDTO.getPhone(), avatar, AccountStatus.PENDING.toString(), account2));
+            } else {
+                roleService.setDefaultRole(account2.getId(), 3L);
+                String avatar = "tet.jpg";
+                merchantService.save(new Merchant(accountRegisterDTO.getName(), accountRegisterDTO.getPhone(),
+                        accountRegisterDTO.getAddress(), avatar, AccountStatus.PENDING.toString(), account2));
+            }
+
+            // TODO: code socket realtime to notification
+
+            Mail mail = new Mail();
+            mail.setMailTo(accountRegisterDTO.getEmail());
+            mail.setMailFrom(Email.MAIL);
+            mail.setMailSubject(Email.MESS);
+            mail.setMailContent(Email.MESSAGE);
+            mailService.sendEmail(mail);
+            return new ResponseEntity<>(new ApiResponse(accountRegisterDTO), HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(new ApiResponse("faile"), HttpStatus.OK);
+        }
+
+    }
 }

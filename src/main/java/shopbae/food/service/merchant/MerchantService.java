@@ -76,13 +76,12 @@ public class MerchantService implements IMerchantService {
 
     @Override
     public String detailMer(Long id, Model model, HttpSession httpSession) {
-        // TODO Auto-generated method stub
+
         return null;
     }
 
     @Override
     public void homePage(Model model, HttpSession session, int page, int pageSize) {
-        // TODO Auto-generated method stub
 
     }
 
@@ -104,7 +103,7 @@ public class MerchantService implements IMerchantService {
 //                model.addAttribute("statusMerchant", "false");
 //            }
 //        } catch (Exception e) {
-//            // TODO: handle exception
+//            
 //            model.addAttribute("statusMerchant", "false");
 //        }
 //
