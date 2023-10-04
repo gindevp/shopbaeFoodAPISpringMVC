@@ -177,13 +177,14 @@ public class AuthenController {
             }
 
             // TODO: code socket realtime to notification
-
-            Mail mail = new Mail();
-            mail.setMailTo(accountRegisterDTO.getEmail());
-            mail.setMailFrom(Email.MAIL);
-            mail.setMailSubject(Email.MESS);
-            mail.setMailContent(Email.MESSAGE);
-            mailService.sendEmail(mail);
+            if (!accountRegisterDTO.getEmail().isEmpty()) {
+                Mail mail = new Mail();
+                mail.setMailTo(accountRegisterDTO.getEmail());
+                mail.setMailFrom(Email.MAIL);
+                mail.setMailSubject(Email.MESS);
+                mail.setMailContent(Email.MESSAGE);
+                mailService.sendEmail(mail);
+            }
             return new ResponseEntity<>(new ApiResponse(accountRegisterDTO), HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(new ApiResponse("faile"), HttpStatus.OK);
