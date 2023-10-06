@@ -13,6 +13,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,6 +25,7 @@ import shopbae.food.model.AccountDetails;
 import shopbae.food.model.AppUser;
 import shopbae.food.model.Mail;
 import shopbae.food.model.Merchant;
+import shopbae.food.model.Product;
 import shopbae.food.model.dto.AccountRegisterDTO;
 import shopbae.food.model.dto.AccountToken;
 import shopbae.food.model.dto.ApiResponse;
@@ -31,6 +33,7 @@ import shopbae.food.model.dto.LoginRequest;
 import shopbae.food.service.account.IAccountService;
 import shopbae.food.service.mail.MailService;
 import shopbae.food.service.merchant.IMerchantService;
+import shopbae.food.service.product.IProductService;
 import shopbae.food.service.role.IRoleService;
 import shopbae.food.service.user.IAppUserService;
 import shopbae.food.util.AccountStatus;
@@ -38,7 +41,7 @@ import shopbae.food.util.Email;
 
 @RestController
 @CrossOrigin
-public class AuthenController {
+public class AuthenControllerHome {
 
     @Autowired
     private MailService mailService;
@@ -63,6 +66,27 @@ public class AuthenController {
 
     @Autowired
     private IRoleService roleService;
+
+    @Autowired
+    private IProductService productService;
+
+    @GetMapping("/merchantp/all")
+    public ResponseEntity<?> allMerchant() {
+        List<Merchant> listMerchants = merchantService.getAllByMerchantStatus(AccountStatus.ACTIVE.toString());
+        if (listMerchants == null) {
+            return new ResponseEntity<>(new ApiResponse("null"), HttpStatus.OK);
+        }
+        return new ResponseEntity<>(new ApiResponse(listMerchants), HttpStatus.OK);
+    }
+
+    @GetMapping("/merchantp/detail")
+    public ResponseEntity<?> merchantDetail(@RequestParam Long id) {
+        List<Product> products = productService.getAllByDeleteFlagTrueAndMerchant(id);
+        if (products == null) {
+            return new ResponseEntity<>(new ApiResponse("null"), HttpStatus.OK);
+        }
+        return new ResponseEntity<>(new ApiResponse(products), HttpStatus.OK);
+    }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
