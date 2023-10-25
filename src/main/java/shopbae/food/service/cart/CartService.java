@@ -1,17 +1,18 @@
 package shopbae.food.service.cart;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import javax.servlet.http.HttpSession;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.ui.Model;
 
 import shopbae.food.model.AppUser;
 import shopbae.food.model.Cart;
+import shopbae.food.model.Merchant;
+import shopbae.food.model.Order;
+import shopbae.food.model.OrderDetail;
 import shopbae.food.model.Product;
 import shopbae.food.repository.cart.ICartRepository;
 import shopbae.food.service.favorite.IFavoriteService;
@@ -19,6 +20,7 @@ import shopbae.food.service.order.IOrderService;
 import shopbae.food.service.orderDetail.IOrderDetailService;
 import shopbae.food.service.product.IProductService;
 import shopbae.food.service.user.IAppUserService;
+import shopbae.food.util.OrderStatus;
 
 @Service
 public class CartService implements ICartService {
@@ -148,11 +150,10 @@ public class CartService implements ICartService {
     }
 
     @Override
-    public void cartDetail(Model model, Long userId, HttpSession session) {
-//        long merId = (long) session.getAttribute("merchantId");
-//        List<Cart> cart1 = this.findAllByUser(userId);
-//        List<Cart> cart2 = cart1.stream().filter(c -> c.getProduct().getMerchant().getId() == merId)
-//                .collect(Collectors.toList());
+    public List<Cart> cartDetail(Long userId, Long merId) {
+        List<Cart> cart1 = this.findAllByUser(userId);
+        List<Cart> cart2 = cart1.stream().filter(c -> c.getProduct().getMerchant().getId() == (long) merId)
+                .collect(Collectors.toList());
 //        for (Cart cart : cart2) {
 //            Favorite favorite = favoriteService.findByUserAndPro(appUserService.findById(userId), cart.getProduct());
 //            if (favorite != null) {
@@ -162,62 +163,48 @@ public class CartService implements ICartService {
 //            }
 //            cartRepository.update(cart);
 //        }
-//        System.out.println("cart2: " + cart2);
-//        model.addAttribute("products", cart2);
-//        double sum = 0;
-//        for (Cart x : cart2) {
-//            sum += x.getTotalPrice();
-//        }
-//        model.addAttribute("sum", sum);
 //        List<Order> orders = orderService.findByAppUserAndMer(userId, (Long) session.getAttribute("merchantId"));
 //        model.addAttribute("orders", orders);
-//        if (cart2.isEmpty()) {
-//            model.addAttribute("message", "khong co du lieu");
-//        } else {
-//            model.addAttribute("message", "co du lieu");
-//        }
-//        model.addAttribute("page", "cart.jsp");
+        return cart2;
     }
 
     @Override
     public List<Product> ordeing(Long userId, Long merchantId, String note, String address, double sum) {
-//        List<Cart> carts = this.findAllByUser(userId);
-//        System.out.println("cart by userId:" + carts);
-//        List<Cart> oderDetail = carts.stream().filter(a -> a.getProduct().getMerchant().getId() == (long) merchantId)
-//                .collect(Collectors.toList());
-//        List<Product> productFail = new ArrayList<>();
+        List<Cart> carts = this.findAllByUser(userId);
+        List<Cart> oderDetail = carts.stream().filter(a -> a.getProduct().getMerchant().getId() == (long) merchantId)
+                .collect(Collectors.toList());
+        List<Product> productFail = new ArrayList<>();
 //        for (Cart cart : oderDetail) {
 //            if ((cart.getProduct().getQuantity() - cart.getQuantity()) < 0) {
 //                productFail.add(cart.getProduct());
 //            }
-//            ;
 //        }
 //        if (productFail.size() == 0) {
-//            Order oder = new Order();
-//            oder.setOrderdate(java.time.LocalDateTime.now());
-//            oder.setNote(note);
-//            oder.setStatus(OrderStatus.MERCHANT_PENDING.toString());
-//            oder.setTotalPrice(sum);
-//            oder.setAppUser(appUserService.findById(userId));
-//            oder.setMerchant_id(merchantId);
-//            oder.setDeliveryAddress(address);
-//            Long orderId = (Long) orderService.savee(oder);
-//
-//            System.out.println("cart by userId and merId:" + oderDetail);
-//            for (Cart cart : oderDetail) {
-//                OrderDetail orderDetail = new OrderDetail();
-//                oder.setId(orderId);
-//                orderDetail.setOrder(oder);
-//                orderDetail.setProduct(cart.getProduct());
-//                orderDetail.setQuantity(cart.getQuantity());
-//                orderDetailService.save(orderDetail);
-//                cart.setDeleteFlag(false);
-//                cartRepository.update(cart);
-//
-//                cart.getProduct().setQuantity(cart.getProduct().getQuantity() - cart.getQuantity());
-//                productService.update(cart.getProduct());
-//
-//            }
+        Order oder = new Order();
+        oder.setOrderdate(java.time.LocalDateTime.now());
+        oder.setNote(note);
+        oder.setStatus(OrderStatus.MERCHANT_PENDING.toString());
+        oder.setTotalPrice(sum);
+        oder.setAppUser(appUserService.findById(userId));
+        Merchant merchantA = new Merchant();
+        merchantA.setId(merchantId);
+        oder.setMerchant(merchantA);
+        oder.setDeliveryAddress(address);
+        Long orderId = (Long) orderService.savee(oder);
+        for (Cart cart : oderDetail) {
+            OrderDetail orderDetail = new OrderDetail();
+            oder.setId(orderId);
+            orderDetail.setOrder(oder);
+            orderDetail.setProduct(cart.getProduct());
+            orderDetail.setQuantity(cart.getQuantity());
+            orderDetailService.save(orderDetail);
+            cart.setDeleteFlag(false);
+            cartRepository.update(cart);
+
+            cart.getProduct().setQuantity(cart.getProduct().getQuantity() - cart.getQuantity());
+            productService.update(cart.getProduct());
+
+        }
 //            String mess = messageSource.getMessage("order_new", null, LocaleContextHolder.getLocale());
 //            String status = messageSource.getMessage(oder.getStatus(), null, LocaleContextHolder.getLocale());
 //            OrderDTO dto = new OrderDTO();
@@ -228,16 +215,15 @@ public class CartService implements ICartService {
 //            dto.setAddress(address);
 //            dto.setTime(String.valueOf(oder.getOrderdate()));
 //            dto.setNote(note);
-//            dto.setStatus(status);
-//            dto.setMessage(mess);
+//            dto.setStatus(oder.getStatus());
+//            dto.setMessage("order_new");
 //            dto.setUser(appUserService.findById(userId).getName());
-//
+
 //            messagingTemplate.convertAndSend("/topic/ordeing/" + merchantId, dto);
-//            return productFail;
+        return productFail;
 //        } else {
 //            return productFail;
 //        }
-        return null;
     }
 
     @Override

@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.transaction.annotation.Transactional;
+
 import shopbae.food.model.Order;
 import shopbae.food.repository.user.IAppUserRepository;
 
@@ -18,71 +19,76 @@ import shopbae.food.repository.user.IAppUserRepository;
 @Transactional
 @EnableTransactionManagement
 public class OrderRepository implements IOrderRepository {
-	@Autowired
-	private SessionFactory sessionFactory;
-	@Autowired
-	private IAppUserRepository appUserRepository;
+    @Autowired
+    private SessionFactory sessionFactory;
+    @Autowired
+    private IAppUserRepository appUserRepository;
 
-	private Session getSession() {
-		Session session = sessionFactory.getCurrentSession();
-		return session;
-	}
+    private Session getSession() {
+        Session session = sessionFactory.getCurrentSession();
+        return session;
+    }
 
-	@Override
-	public Order findById(Long id) {
-		return getSession().get(Order.class, id);
-	}
+    @Override
+    public Order findById(Long id) {
+        return getSession().get(Order.class, id);
+    }
 
-	@Override
-	public void save(Order t) {
-		getSession().save(t);
-	}
+    @Override
+    public void save(Order t) {
+        getSession().save(t);
+    }
 
-	@Override
-	public void update(Order t) {
-		getSession().update(t);
-	}
+    @Override
+    public void update(Order t) {
+        getSession().update(t);
+    }
 
-	@Override
-	public void delete(Order t) {
-		getSession().delete(t);
-	}
+    @Override
+    public void delete(Order t) {
+        getSession().delete(t);
+    }
 
-	@Override
-	public List<Order> findAll() {
-		return getSession().createQuery("FROM orders a where a.flag=true", Order.class).getResultList();
-	}
+    @Override
+    public List<Order> findAll() {
+        return getSession().createQuery("FROM orders a where a.flag=true", Order.class).getResultList();
+    }
 
-	@Override
-	public List<Order> findByAppUserAndMer(Long userId, Long merId) {
-		try {
-			TypedQuery<Order> query = getSession().createQuery(
-					"FROM orders a where a.flag=true and a.appUser =:userId and a.merchant_id =:merId", Order.class);
-			query.setParameter("userId", appUserRepository.findById(userId));
-			query.setParameter("merId", merId);
-			return query.getResultList();
-		} catch (Exception e) {
-			return null;
-		}
+    @Override
+    public List<Order> findByAppUserAndMer(Long userId) {
+        try {
+            TypedQuery<Order> query = getSession().createQuery(
+                    "FROM orders a where a.flag=true and a.appUser =:userId ORDER BY a.orderdate DESC", Order.class);
+            query.setParameter("userId", appUserRepository.findById(userId));
+            return query.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
 
-	}
+    }
 
-	@Override
-	public Serializable savee(Order t) {
-		return getSession().save(t);
-	}
+    @Override
+    public Serializable savee(Order t) {
+        return getSession().save(t);
+    }
 
-	@Override
-	public List<Order> findByFlagAndStatus(String status) {
-		try {
-			TypedQuery<Order> query = getSession().createQuery("FROM orders a where a.flag=true and a.status=: status",
-					Order.class);
-			query.setParameter("status", status);
-			return query.getResultList();
-		} catch (Exception e) {
-			return null;
-		}
-
-	}
+    @Override
+    public List<Order> findByFlagAndStatus(String status) {
+        try {
+            TypedQuery<Order> query;
+            if (status == null || status.isEmpty()) {
+                query = getSession().createQuery("FROM orders a where a.flag=true ORDER BY a.orderdate DESC",
+                        Order.class);
+            } else {
+                query = getSession().createQuery(
+                        "FROM orders a where a.flag=true and a.status=:status ORDER BY a.orderdate DESC", Order.class);
+                query.setParameter("status", status);
+            }
+            return query.getResultList();
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
 }

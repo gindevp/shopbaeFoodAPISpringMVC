@@ -16,6 +16,7 @@ public class AccountToken {
 
     private Merchant merchant;
     private AppUser user;
+    private String email;
 
     public AccountToken(long id, String username, String token, List<String> roles, Merchant merchant, AppUser user) {
         this.id = id;
@@ -26,7 +27,26 @@ public class AccountToken {
         this.user = user;
     }
 
+    public AccountToken(long id, String username, String token, List<String> roles, Merchant merchant, AppUser user,
+            String email) {
+        this.id = id;
+        this.username = username;
+        this.token = token;
+        this.roles = roles;
+        this.merchant = merchant;
+        this.user = user;
+        this.email = email;
+    }
+
     public AccountToken() {
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public long getId() {

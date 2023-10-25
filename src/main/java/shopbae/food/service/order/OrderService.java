@@ -47,8 +47,8 @@ public class OrderService implements IOrderService {
     }
 
     @Override
-    public List<Order> findByAppUserAndMer(Long userId, Long merId) {
-        return orderRepository.findByAppUserAndMer(userId, merId);
+    public List<Order> findByAppUserAndMer(Long userId) {
+        return orderRepository.findByAppUserAndMer(userId);
     }
 
     @Override

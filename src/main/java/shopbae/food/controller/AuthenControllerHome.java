@@ -14,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,6 +26,7 @@ import shopbae.food.model.AccountDetails;
 import shopbae.food.model.AppUser;
 import shopbae.food.model.Mail;
 import shopbae.food.model.Merchant;
+import shopbae.food.model.OrderDetail;
 import shopbae.food.model.Product;
 import shopbae.food.model.dto.AccountRegisterDTO;
 import shopbae.food.model.dto.AccountToken;
@@ -33,6 +35,7 @@ import shopbae.food.model.dto.LoginRequest;
 import shopbae.food.service.account.IAccountService;
 import shopbae.food.service.mail.MailService;
 import shopbae.food.service.merchant.IMerchantService;
+import shopbae.food.service.orderDetail.IOrderDetailService;
 import shopbae.food.service.product.IProductService;
 import shopbae.food.service.role.IRoleService;
 import shopbae.food.service.user.IAppUserService;
@@ -42,6 +45,8 @@ import shopbae.food.util.Email;
 @RestController
 @CrossOrigin
 public class AuthenControllerHome {
+    @Autowired
+    private IOrderDetailService detailService;
 
     @Autowired
     private MailService mailService;
@@ -128,7 +133,7 @@ public class AuthenControllerHome {
             }
 
             return new ResponseEntity<>(new ApiResponse(new AccountToken(account.getId(), account.getUserName(), token,
-                    roles, account.getMerchant(), account.getUser())), HttpStatus.OK);
+                    roles, account.getMerchant(), account.getUser(), account.getEmail())), HttpStatus.OK);
 
         } catch (Exception e) {
             return new ResponseEntity<>(new ApiResponse("sai roi"), HttpStatus.OK);
@@ -190,12 +195,12 @@ public class AuthenControllerHome {
             Account account2 = accountService.findByName(accountRegisterDTO.getUserName());
             if (role.equals("user")) {
                 roleService.setDefaultRole(account2.getId(), 2L);
-                String avatar = "tet.jpg";
+                String avatar = "https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg";
                 userService.save(new AppUser(accountRegisterDTO.getName(), accountRegisterDTO.getAddress(),
                         accountRegisterDTO.getPhone(), avatar, AccountStatus.PENDING.toString(), account2));
             } else {
                 roleService.setDefaultRole(account2.getId(), 3L);
-                String avatar = "tet.jpg";
+                String avatar = "https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg";
                 merchantService.save(new Merchant(accountRegisterDTO.getName(), accountRegisterDTO.getPhone(),
                         accountRegisterDTO.getAddress(), avatar, AccountStatus.PENDING.toString(), account2));
             }
@@ -214,5 +219,17 @@ public class AuthenControllerHome {
             return new ResponseEntity<>(new ApiResponse("faile"), HttpStatus.OK);
         }
 
+    }
+
+    @GetMapping("/a/detail/order/{id}")
+    public ResponseEntity<?> oderDetail(@PathVariable Long id) {
+        try {
+            List<OrderDetail> details = detailService.findByOrder(id);
+            return new ResponseEntity<>(new ApiResponse(details), HttpStatus.OK);
+        } catch (Exception e) {
+            // TODO: handle exception
+            e.printStackTrace();
+            return new ResponseEntity<>(new ApiResponse("fail"), HttpStatus.BAD_REQUEST);
+        }
     }
 }
